@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # マスター (Citus Coordinator)
+  master:
+    image: citusdata/citus:11.3
+    container_name: postgres_master
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db-demo
+    ports:
+      - "5432:5432"
+    volumes:
+      - master_data:/var/lib/postgresql/data
+      - ./master:/docker-entrypoint-initdb.d
+
+  # リードレプリカ (Streaming Replication)
+  replica:
+    image: postgres:15
+    container_name: postgres_replica
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db-demo
+      POSTGRES_REPLICATION_ROLE: replica
+      POSTGRES_REPLICATION_PRIMARY_HOST: master
+      POSTGRES_REPLICATION_PRIMARY_PORT: 5432
+    depends_on:
+      - master
+    ports:
+      - "5433:5432"
+    volumes:
+      - replica_data:/var/lib/postgresql/data
+
+  # シャード1
+  shard1:
+    image: citusdata/citus:11.3
+    container_name: postgres_shard1
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db-demo
+    depends_on:
+      - master
+    ports:
+      - "5501:5432"
+    volumes:
+      - shard1_data:/var/lib/postgresql/data
+
+  # シャード2
+  shard2:
+    image: citusdata/citus:11.3
+    container_name: postgres_shard2
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db-demo
+    depends_on:
+      - master
+    ports:
+      - "5502:5432"
+    volumes:
+      - shard2_data:/var/lib/postgresql/data
+
+volumes:
+  master_data:
+  replica_data:
+  shard1_data:
+  shard2_data:
